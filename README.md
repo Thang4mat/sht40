@@ -151,7 +151,8 @@ sht40_c3_monitor/
   touches the bus.
 - Both `SHT40Sensor::begin()` and `OLEDDisplay::begin()` **probe** their I2C
   address first (`Wire.beginTransmission` / `endTransmission`) so a missing or
-  unwired device is logged and disabled instead of hanging the board.
+  unwired device is logged instead of hanging the board. What happens next
+  differs by device (see "Missing devices" below).
 - The SHT40 driver never blocks: it sends the measure command, then waits via
   `millis()` for the ~8.3 ms conversion time before reading back 6 bytes
   (2x temperature, 2x humidity, 2x CRC-8). Each half is verified against the
@@ -163,8 +164,16 @@ sht40_c3_monitor/
   signal, not genuinely new data. The OLED redraws whenever a wake-up happens (driven by
   the sensor/battery schedule, see "Power saving" above) showing the current temperature,
   humidity, and the min/max temperature seen since boot.
-- If the sensor isn't found at startup, the OLED shows a "Sensor not found"
-  screen with the expected wiring instead of blank/garbage data.
+
+### Missing devices
+
+- **OLED missing:** not fatal. `[OLED] Not found at 0x3C` is logged, the display is
+  disabled, and the board keeps measuring (readings still go to Serial).
+- **SHT40 missing:** fatal (fail fast). `setup()` logs
+  `[Setup] FATAL: SHT40 missing -- halted. Check wiring, then press RESET` and stops.
+  If the OLED is present it keeps showing the "Sensor not found!" screen with the
+  expected wiring (`SDA=GPIO8 SCL=GPIO9`). The halted board stays fully awake (no light
+  sleep), so uploading new firmware still works. After fixing the wiring, press RESET.
 
 ## Build & flash (PlatformIO)
 
@@ -200,8 +209,8 @@ sht40_c3_monitor/
 | No serial output | USB CDC On Boot not enabled — see build flags / IDE setting above |
 | Port not detected | Charge-only USB-C cable — use a data-capable one |
 | Firmware doesn't run after upload | Press RESET — upload leaves the board in download mode |
-| `[SHT40] Not found at 0x44` | Check SDA/SCL wiring and that SHT40 VCC is 3.3V |
-| `[OLED] Not found at 0x3C` | Check SDA/SCL wiring; some SSD1306 boards use `0x3D` — update `OLED_I2C_ADDR` in `config.h` if so |
+| `[SHT40] Not found at 0x44` followed by `[Setup] FATAL: SHT40 missing` | The board halts on purpose when the SHT40 is missing (the OLED shows "Sensor not found!"). Check SDA/SCL wiring and that SHT40 VCC is 3.3V, then press RESET |
+| `[OLED] Not found at 0x3C` | Not fatal — the board keeps running without a display. Check SDA/SCL wiring; some SSD1306 boards use `0x3D` — update `OLED_I2C_ADDR` in `config.h` if so |
 | `[SHT40] CRC error` in log | Noisy/long I2C wires — add 4.7kΩ pull-ups on SDA/SCL if not already on the breakout boards, keep wires short |
 | Battery `%` reads wrong / stuck at 0 or 100 | Check R1/R2 wiring and values match `config.h`; verify GPIO0 isn't shared with another peripheral; also check `BATTERY_CALIBRATION_FACTOR` is calibrated for your actual resistors/board — see "Calibration" above |
 | Battery badge shows `USB` instead of a percentage | Expected — USB is connected and the reading is unreliable on this board (see "USB detection" above). Unplug USB to see the real percentage |

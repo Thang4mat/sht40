@@ -33,7 +33,7 @@ public:
 
         present_ = true;
 
-        // Reduce brightness to ~50% -- SSD1306 SETCONTRAST takes a 0-255 value
+        // Brightness from OLED_CONTRAST (config.h, 0-255; 1 = near-minimum) -- SSD1306 SETCONTRAST value
         display_.ssd1306_command(SSD1306_SETCONTRAST);
         display_.ssd1306_command(static_cast<uint8_t>(OLED_CONTRAST));
 

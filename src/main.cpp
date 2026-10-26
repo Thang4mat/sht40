@@ -31,6 +31,19 @@ void setup() {
 
     Serial.printf("[Setup] OLED present=%d, SHT40 present=%d\n",
                   static_cast<int>(oled_ok), static_cast<int>(sht40_ok));
+
+    // Fail fast: the SHT40 is the whole point of this board -- no sensor, no run.
+    // A missing OLED is NOT fatal (oled.update() is a no-op when absent).
+    // Halt awake (no light sleep) and keep redrawing so the OLED, if present,
+    // keeps showing the "Sensor not found" wiring screen instead of going stale.
+    if (!sht40_ok) {
+        Serial.println("[Setup] FATAL: SHT40 missing -- halted. Check wiring, then press RESET");
+        while (true) {
+            oled.update(sht40.getReading(), sht40.getStats(), false, battery.getReading());
+            delay(OLED_REFRESH_INTERVAL_MS);
+        }
+    }
+
     Serial.println("[Setup] Ready");
 }
 
@@ -93,4 +106,3 @@ void loop() {
     gpio_hold_dis(static_cast<gpio_num_t>(I2C_SDA_PIN));
     gpio_hold_dis(static_cast<gpio_num_t>(I2C_SCL_PIN));
 }
-
